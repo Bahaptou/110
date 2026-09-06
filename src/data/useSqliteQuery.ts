@@ -9,6 +9,8 @@ type UseSqliteQueryResult<T> = {
   loading: boolean;
   error: QueryError | null;
   refresh: () => Promise<void>;
+  /** Updates `data` locally without a refetch/loading flash — for optimistic updates after a small write (e.g. a toggle). */
+  setData: (updater: (current: T | null) => T | null) => void;
 };
 
 /**
@@ -18,14 +20,14 @@ type UseSqliteQueryResult<T> = {
  */
 export function useSqliteQuery<T>(query: (db: SQLiteDatabase) => Promise<T>): UseSqliteQueryResult<T> {
   const db = useSQLiteContext();
-  const [data, setData] = useState<T | null>(null);
+  const [data, setDataState] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<QueryError | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setData(await query(db));
+      setDataState(await query(db));
       setError(null);
     } catch (cause) {
       setError(toQueryError(cause));
@@ -40,5 +42,5 @@ export function useSqliteQuery<T>(query: (db: SQLiteDatabase) => Promise<T>): Us
     }, [refresh])
   );
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, refresh, setData: setDataState };
 }

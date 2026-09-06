@@ -1,10 +1,10 @@
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Rect } from 'react-native-svg';
 
+import { SearchBar } from '../../../components/layout/SearchBar';
 import { StretchHeader } from '../../../components/layout/StretchHeader';
 import { useScrollHeader } from '../../../components/layout/useScrollHeader';
 import { type Track } from '../../tracks/types';
@@ -18,16 +18,6 @@ const AnimatedFlatList = Animated.FlatList;
 
 function HeartIcon({ filled }: { filled: boolean }): React.JSX.Element {
   return <Text style={{ color: filled ? '#E8001C' : '#555', fontSize: 18 }}>{filled ? '♥' : '♡'}</Text>;
-}
-
-function MicIcon({ color }: { color: string }): React.JSX.Element {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
-      <Rect x={9} y={2} width={6} height={12} rx={3} fill={color} stroke="none" />
-      <Path d="M5 11a7 7 0 0 0 14 0" />
-      <Path d="M12 18v4" />
-    </Svg>
-  );
 }
 
 function TrackRow({ track, onToggleFavorite }: { track: Track; onToggleFavorite: () => void }): React.JSX.Element {
@@ -45,16 +35,15 @@ export function ArtistDetailScreen({ route, navigation }: Props): React.JSX.Elem
   const { artistId } = route.params;
   const { artists } = useArtists();
   const artist = artists.find((a) => a.id === artistId);
-  const { tracks, loading, error, addTrack, toggleFavorite } = useArtistTracks(artistId);
-  const [newTitle, setNewTitle] = useState('');
+  const { tracks, loading, error, toggleFavorite } = useArtistTracks(artistId);
   const { scrollY, onScroll } = useScrollHeader();
+  const [search, setSearch] = useState('');
 
-  const handleAddTrack = async () => {
-    const result = await addTrack(newTitle);
-    if (result.ok) {
-      setNewTitle('');
-    }
-  };
+  const filteredTracks = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (query.length === 0) return tracks;
+    return tracks.filter((track) => track.title.toLowerCase().includes(query));
+  }, [tracks, search]);
 
   if (!artist) {
     return (
@@ -72,7 +61,7 @@ export function ArtistDetailScreen({ route, navigation }: Props): React.JSX.Elem
         </Pressable>
       </View>
       <AnimatedFlatList
-        data={tracks}
+        data={filteredTracks}
         keyExtractor={(track: Track) => track.id}
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -92,29 +81,14 @@ export function ArtistDetailScreen({ route, navigation }: Props): React.JSX.Elem
               </Text>
             </View>
 
-            <Text style={styles.sectionLabel}>AJOUTER UN SON</Text>
-            <View style={styles.addRow}>
-              <TextInput
-                value={newTitle}
-                onChangeText={setNewTitle}
-                placeholder="Titre du son"
-                placeholderTextColor="#555"
-                style={styles.input}
-              />
-              <Pressable
-                onPress={handleAddTrack}
-                disabled={newTitle.trim().length === 0}
-                style={[styles.micButton, newTitle.trim().length === 0 && styles.micButtonDisabled]}
-              >
-                <MicIcon color={newTitle.trim().length === 0 ? '#555' : '#000'} />
-              </Pressable>
-            </View>
+            <SearchBar scrollY={scrollY} value={search} onChangeText={setSearch} placeholder="Rechercher un morceau" />
 
-            <Text style={styles.sectionLabel}>MORCEAUX</Text>
             {loading && <Text style={styles.info}>Chargement...</Text>}
             {error && <Text style={styles.info}>{error.message}</Text>}
-            {!loading && !error && tracks.length === 0 && (
-              <Text style={styles.info}>Pas encore de son pour cet artiste.</Text>
+            {!loading && !error && filteredTracks.length === 0 && (
+              <Text style={styles.info}>
+                {search.trim().length > 0 ? 'Aucun résultat.' : 'Pas encore de son pour cet artiste.'}
+              </Text>
             )}
           </>
         }
@@ -133,31 +107,9 @@ const styles = StyleSheet.create({
   coverArea: { alignItems: 'center', paddingTop: 12, paddingBottom: 20 },
   cover: { width: 200, height: 200, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   coverInitials: { color: '#000', fontWeight: '700', fontSize: 64, opacity: 0.85 },
-  artistInfo: { alignItems: 'center', paddingBottom: 8 },
+  artistInfo: { alignItems: 'center', paddingBottom: 16 },
   name: { color: '#fff', fontWeight: '700', fontSize: 24 },
   stats: { color: '#888', fontSize: 12, marginTop: 4 },
-  sectionLabel: { color: '#888', fontSize: 11, letterSpacing: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 },
-  input: {
-    flex: 1,
-    backgroundColor: '#111',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    borderRadius: 18,
-    color: '#fff',
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  micButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFD600',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  micButtonDisabled: { backgroundColor: '#1a1a1a' },
   info: { color: '#888', padding: 16, fontSize: 13 },
   trackRow: {
     flexDirection: 'row',

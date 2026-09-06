@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { type SQLiteDatabase } from 'expo-sqlite';
 
-import { insertArtist, listArtists } from './repository';
+import { deleteArtist, insertArtist, listArtists } from './repository';
 import { type Artist } from './types';
 
 /** Business logic for artists — orchestrates the repository, never touches SQL directly from callers. */
@@ -30,4 +30,9 @@ export async function createArtist(db: SQLiteDatabase, rawName: string): Promise
 
   await insertArtist(db, artist);
   return { ok: true, artist };
+}
+
+/** Deletes an artist. Cascades to their tracks (and albums, once implemented) at the database level. */
+export async function removeArtist(db: SQLiteDatabase, artistId: string): Promise<void> {
+  await deleteArtist(db, artistId);
 }

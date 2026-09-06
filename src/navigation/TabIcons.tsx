@@ -49,3 +49,14 @@ export function PlaylistsTabIcon({ active }: IconProps): React.JSX.Element {
     </Svg>
   );
 }
+
+/** White mic glyph for the raised record button — always drawn on a solid red circle, never inactive-gray. */
+export function RecordTabIcon(): React.JSX.Element {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+      <Rect x={9} y={2} width={6} height={12} rx={3} fill="#fff" stroke="none" />
+      <Path d="M5 11a7 7 0 0 0 14 0" />
+      <Path d="M12 18v3" />
+    </Svg>
+  );
+}

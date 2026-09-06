@@ -1,13 +1,19 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { BottomTabBar, createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useState } from 'react';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { PlaceholderScreen } from '../components/layout/PlaceholderScreen';
 import { ArtistsStack } from '../features/artists/ArtistsStack';
-import { AlbumsTabIcon, ArtistsTabIcon, PlaylistsTabIcon, TracksTabIcon } from './TabIcons';
+import { MiniPlayer } from '../features/playback/MiniPlayer';
+import { PlayerScreen } from '../features/playback/PlayerScreen';
+import { TracksStack } from '../features/tracks/TracksStack';
+import { AlbumsTabIcon, ArtistsTabIcon, PlaylistsTabIcon, RecordTabIcon, TracksTabIcon } from './TabIcons';
 
 export type RootTabParamList = {
   Artists: undefined;
   Tracks: undefined;
+  Record: undefined;
   Albums: undefined;
   Playlists: undefined;
 };
@@ -32,10 +38,6 @@ const darkTheme = {
   },
 };
 
-function TracksScreen(): React.JSX.Element {
-  return <PlaceholderScreen label="MORCEAUX" />;
-}
-
 function AlbumsScreen(): React.JSX.Element {
   return <PlaceholderScreen label="ALBUMS" />;
 }
@@ -44,8 +46,44 @@ function PlaylistsScreen(): React.JSX.Element {
   return <PlaceholderScreen label="PLAYLISTS" />;
 }
 
-/** Root navigator: 4-tab bar (Artistes/Morceaux/Albums/Playlists), each tab owning its own stack for drill-down. */
+/** Never actually navigated to — tabBarButton below intercepts the press instead. Required by Tab.Screen regardless. */
+function RecordScreen(): React.JSX.Element | null {
+  return null;
+}
+
+/** Raised circular record button, like Instagram/TikTok's center camera tab. Visual only for now — no action wired yet. */
+function RecordTabButton(): React.JSX.Element {
+  return (
+    <View style={styles.recordButtonWrapper}>
+      <Pressable style={styles.recordButton}>
+        <RecordTabIcon />
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  recordButtonWrapper: { flex: 1, alignItems: 'center' },
+  recordButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E8001C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -20,
+    shadowColor: '#E8001C',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+});
+
+/** Root navigator: 5-tab bar (Artistes/Morceaux/Record/Albums/Playlists), each tab owning its own stack for drill-down. */
 export function RootNavigator(): React.JSX.Element {
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+
   return (
     <NavigationContainer theme={darkTheme}>
       <Tab.Navigator
@@ -56,6 +94,12 @@ export function RootNavigator(): React.JSX.Element {
           tabBarInactiveTintColor: '#555',
           tabBarLabelStyle: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
         }}
+        tabBar={(props: BottomTabBarProps) => (
+          <View>
+            <MiniPlayer onOpen={() => setIsPlayerOpen(true)} />
+            <BottomTabBar {...props} />
+          </View>
+        )}
       >
         <Tab.Screen
           name="Artists"
@@ -64,8 +108,13 @@ export function RootNavigator(): React.JSX.Element {
         />
         <Tab.Screen
           name="Tracks"
-          component={TracksScreen}
+          component={TracksStack}
           options={{ tabBarLabel: 'MORCEAUX', tabBarIcon: ({ focused }) => <TracksTabIcon active={focused} /> }}
+        />
+        <Tab.Screen
+          name="Record"
+          component={RecordScreen}
+          options={{ tabBarLabel: '', tabBarButton: () => <RecordTabButton /> }}
         />
         <Tab.Screen
           name="Albums"
@@ -78,6 +127,9 @@ export function RootNavigator(): React.JSX.Element {
           options={{ tabBarLabel: 'PLAYLISTS', tabBarIcon: ({ focused }) => <PlaylistsTabIcon active={focused} /> }}
         />
       </Tab.Navigator>
+      <Modal visible={isPlayerOpen} animationType="slide" onRequestClose={() => setIsPlayerOpen(false)}>
+        <PlayerScreen onClose={() => setIsPlayerOpen(false)} />
+      </Modal>
     </NavigationContainer>
   );
 }

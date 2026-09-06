@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 
 import { type QueryError } from '../../data/queryError';
 import { useSqliteQuery } from '../../data/useSqliteQuery';
-import { createArtist, getArtists, type CreateArtistResult } from './service';
+import { createArtist, getArtists, removeArtist, type CreateArtistResult } from './service';
 import { type Artist } from './types';
 
 type UseArtistsResult = {
@@ -12,6 +12,7 @@ type UseArtistsResult = {
   error: QueryError | null;
   refresh: () => Promise<void>;
   addArtist: (name: string) => Promise<CreateArtistResult>;
+  deleteArtist: (artistId: string) => Promise<void>;
 };
 
 export function useArtists(): UseArtistsResult {
@@ -30,5 +31,13 @@ export function useArtists(): UseArtistsResult {
     [db, refresh]
   );
 
-  return { artists: data ?? [], loading, error, refresh, addArtist };
+  const deleteArtist = useCallback(
+    async (artistId: string) => {
+      await removeArtist(db, artistId);
+      await refresh();
+    },
+    [db, refresh]
+  );
+
+  return { artists: data ?? [], loading, error, refresh, addArtist, deleteArtist };
 }

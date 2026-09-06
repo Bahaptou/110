@@ -23,3 +23,8 @@ export async function insertArtist(db: SQLiteDatabase, artist: Artist): Promise<
     artist.createdAt
   );
 }
+
+/** Deletes the artist row. Relies on ON DELETE CASCADE (tracks, and albums once that table exists) — see db/client.ts for the PRAGMA that enables it. */
+export async function deleteArtist(db: SQLiteDatabase, artistId: string): Promise<void> {
+  await db.runAsync('DELETE FROM artists WHERE id = ?;', artistId);
+}
