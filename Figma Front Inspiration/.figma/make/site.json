@@ -1,0 +1,10 @@
+{
+  "description": "Organize and play short voice memos from friends like music tracks with artists, albums, and playlists for a nostalgic, seamless audio library experience.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
