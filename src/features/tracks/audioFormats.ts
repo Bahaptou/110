@@ -3,7 +3,7 @@
  * because they're what iOS/Android record natively and expo-audio reliably decodes on both
  * platforms. Anything else is rejected at import time rather than silently failing at playback.
  */
-export const SUPPORTED_AUDIO_EXTENSIONS = ['m4a', 'aac', 'mp3', 'wav'] as const;
+export const SUPPORTED_AUDIO_EXTENSIONS = ['m4a', 'mp4', 'aac', 'mp3', 'wav'] as const;
 export type SupportedAudioExtension = (typeof SUPPORTED_AUDIO_EXTENSIONS)[number];
 
 const SUPPORTED_MIME_TYPES = new Set([

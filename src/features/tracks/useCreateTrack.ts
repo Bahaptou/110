@@ -14,7 +14,7 @@ export type PendingTrackAudio = {
 };
 
 type UseCreateTrackResult = {
-  save: (artistId: string, title: string, audio: PendingTrackAudio) => Promise<CreateTrackResult>;
+  save: (artistId: string, title: string, audio: PendingTrackAudio, imageUri?: string) => Promise<CreateTrackResult>;
 };
 
 /** Not scoped to any artist — used by the import/record flow, where the artist is chosen after the fact. */
@@ -22,10 +22,16 @@ export function useCreateTrack(): UseCreateTrackResult {
   const db = useSQLiteContext();
 
   const save = useCallback(
-    async (artistId: string, title: string, audio: PendingTrackAudio) => {
+    async (artistId: string, title: string, audio: PendingTrackAudio, imageUri = '') => {
       const trackId = randomUUID();
-      const audioUri = persistAudioFile(audio.sourceUri, trackId, audio.extension);
-      return createTrack(db, trackId, { artistId, title, audioUri, durationSeconds: audio.durationSeconds });
+      const audioUri = await persistAudioFile(audio.sourceUri, trackId, audio.extension);
+      return createTrack(db, trackId, {
+        artistId,
+        title,
+        audioUri,
+        imageUri,
+        durationSeconds: audio.durationSeconds,
+      });
     },
     [db]
   );

@@ -1,11 +1,14 @@
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '../../../components/ui/Button';
 import { useArtists } from '../../artists/useArtists';
 import { type Artist } from '../../artists/types';
+import { Cover } from '../../images/Cover';
+import { usePickImage } from '../../images/usePickImage';
+import { AudioSourceUnreadableError } from '../audioStorage';
 import { type TracksStackParamList } from '../TracksStack';
 import { useAudioDuration } from '../useAudioDuration';
 import { useCreateTrack } from '../useCreateTrack';
@@ -16,25 +19,42 @@ export function SaveTrackScreen({ route, navigation }: Props): React.JSX.Element
   const { sourceUri, extension, suggestedTitle } = route.params;
   const { artists } = useArtists();
   const { save } = useCreateTrack();
+  const { pickImage } = usePickImage();
   const durationState = useAudioDuration(sourceUri);
   const [title, setTitle] = useState(suggestedTitle);
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const canSubmit =
     title.trim().length > 0 && selectedArtistId !== null && !submitting && durationState.status === 'loaded';
 
+  const pickAndSet = async (source: 'library' | 'camera') => {
+    const uri = await pickImage(source);
+    if (uri) setImageUri(uri);
+  };
+
   const handleSave = async () => {
     if (!selectedArtistId || durationState.status !== 'loaded') return;
     setSubmitting(true);
-    const result = await save(selectedArtistId, title, {
-      sourceUri,
-      extension,
-      durationSeconds: durationState.durationSeconds,
-    });
-    setSubmitting(false);
-    if (result.ok) {
-      navigation.popToTop();
+    try {
+      const result = await save(
+        selectedArtistId,
+        title,
+        { sourceUri, extension, durationSeconds: durationState.durationSeconds },
+        imageUri
+      );
+      if (result.ok) {
+        navigation.popToTop();
+      }
+    } catch (cause) {
+      const message =
+        cause instanceof AudioSourceUnreadableError
+          ? "Ce fichier n'est plus accessible — reviens en arrière et choisis-le à nouveau."
+          : "Une erreur inattendue a empêché l'enregistrement du son.";
+      Alert.alert('Impossible de sauvegarder', message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -57,6 +77,32 @@ export function SaveTrackScreen({ route, navigation }: Props): React.JSX.Element
         style={styles.input}
         autoFocus
       />
+
+      <Text style={styles.sectionLabel}>POCHETTE (OPTIONNEL)</Text>
+      <View style={styles.coverRow}>
+        <Cover
+          imageUri={imageUri}
+          color="#1a1a1a"
+          fallbackText="♪"
+          size={64}
+          borderRadius={16}
+          fontSize={24}
+        />
+        <View style={styles.coverActions}>
+          <Pressable style={styles.coverButton} onPress={() => pickAndSet('library')}>
+            <Text style={styles.coverButtonLabel}>GALERIE</Text>
+          </Pressable>
+          <Pressable style={styles.coverButton} onPress={() => pickAndSet('camera')}>
+            <Text style={styles.coverButtonLabel}>PHOTO</Text>
+          </Pressable>
+          {imageUri.length > 0 && (
+            <Pressable style={styles.coverButton} onPress={() => setImageUri('')}>
+              <Text style={styles.coverButtonLabelMuted}>RETIRER</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+      <Text style={styles.coverHint}>Sans photo, le son prend celle de son album ou de son artiste.</Text>
 
       <Text style={styles.sectionLabel}>ARTISTE</Text>
       {artists.length === 0 ? (
@@ -119,6 +165,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   info: { color: '#888', paddingHorizontal: 16, fontSize: 13 },
+  coverRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16 },
+  coverActions: { flex: 1, flexDirection: 'row', gap: 8 },
+  coverButton: { backgroundColor: '#1a1a1a', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  coverButtonLabel: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  coverButtonLabelMuted: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  coverHint: { color: '#555', fontSize: 11, paddingHorizontal: 16, paddingTop: 8 },
   artistList: { paddingHorizontal: 16, gap: 8 },
   artistRow: {
     flexDirection: 'row',

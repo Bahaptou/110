@@ -1,14 +1,19 @@
-import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type Artist } from '../../artists/types';
 import { useArtists } from '../../artists/useArtists';
-import { type TracksStackParamList } from '../TracksStack';
 import { useAllTracks } from '../useAllTracks';
 
-type Props = NativeStackScreenProps<TracksStackParamList, 'ChangeTrackArtist'>;
+/**
+ * Typed structurally rather than against one stack's param list, because this screen is registered in
+ * both the Tracks stack and the Artists stack (the "⋯" menu exists on track rows in both places).
+ */
+type Props = {
+  route: { params: { trackId: string } };
+  navigation: { goBack: () => void };
+};
 
 /** Full screen (not a floating sheet — those were unstable) for reassigning a track's artist. */
 export function ChangeTrackArtistScreen({ route, navigation }: Props): React.JSX.Element {

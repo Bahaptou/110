@@ -1,13 +1,19 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
 
+import { type Album } from '../albums/types';
+import { deleteImageFile } from '../images/imageStorage';
 import { deleteAudioFile } from './audioStorage';
 import {
   countTracksByArtist,
   deleteTrack,
   insertTrack,
+  listTracksByAlbum,
   listTracksByArtist,
+  setTrackAlbum,
   setTrackArtist,
   setTrackFavorite,
+  setTrackImage,
+  setTrackTitle,
 } from './repository';
 import { type Track } from './types';
 
@@ -17,6 +23,8 @@ export type NewTrackInput = {
   artistId: string;
   title: string;
   audioUri: string;
+  /** Optional cover chosen at creation. Empty means the track inherits its album's or artist's. */
+  imageUri?: string;
   durationSeconds: number;
 };
 
@@ -24,6 +32,10 @@ export type CreateTrackResult = { ok: true; track: Track } | { ok: false; error:
 
 export async function getTracksByArtist(db: SQLiteDatabase, artistId: string): Promise<Track[]> {
   return listTracksByArtist(db, artistId);
+}
+
+export async function getTracksByAlbum(db: SQLiteDatabase, albumId: string): Promise<Track[]> {
+  return listTracksByAlbum(db, albumId);
 }
 
 export async function getTrackCountByArtist(db: SQLiteDatabase, artistId: string): Promise<number> {
@@ -45,7 +57,9 @@ export async function createTrack(db: SQLiteDatabase, trackId: string, input: Ne
     id: trackId,
     title,
     artistId: input.artistId,
+    albumId: null,
     audioUri: input.audioUri,
+    imageUri: input.imageUri ?? '',
     durationSeconds: input.durationSeconds,
     isFavorite: false,
     createdAt: Date.now(),
@@ -63,7 +77,45 @@ export async function changeTrackArtist(db: SQLiteDatabase, trackId: string, art
   await setTrackArtist(db, trackId, artistId);
 }
 
+export type ChangeTrackAlbumResult = { ok: true } | { ok: false; error: 'album_belongs_to_another_artist' };
+
+/**
+ * Moves a track into an album, or out of any album when `albumId` is null. Rejects an album owned by
+ * a different artist — every track in an album must share that album's artist.
+ */
+export async function changeTrackAlbum(
+  db: SQLiteDatabase,
+  track: Track,
+  album: Album | null
+): Promise<ChangeTrackAlbumResult> {
+  if (album && album.artistId !== track.artistId) {
+    return { ok: false, error: 'album_belongs_to_another_artist' };
+  }
+  await setTrackAlbum(db, track.id, album?.id ?? null);
+  return { ok: true };
+}
+
+export type RenameTrackResult = { ok: true } | { ok: false; error: 'empty_title' };
+
+export async function renameTrack(db: SQLiteDatabase, trackId: string, rawTitle: string): Promise<RenameTrackResult> {
+  const title = rawTitle.trim();
+  if (title.length === 0) {
+    return { ok: false, error: 'empty_title' };
+  }
+  await setTrackTitle(db, trackId, title);
+  return { ok: true };
+}
+
+/** Replaces the track's cover, deleting the previous file so old images don't pile up on disk. */
+export async function changeTrackImage(db: SQLiteDatabase, track: Track, imageUri: string): Promise<void> {
+  await setTrackImage(db, track.id, imageUri);
+  if (track.imageUri.length > 0 && track.imageUri !== imageUri) {
+    deleteImageFile(track.imageUri);
+  }
+}
+
 export async function removeTrack(db: SQLiteDatabase, track: Track): Promise<void> {
   await deleteTrack(db, track.id);
   deleteAudioFile(track.audioUri);
+  deleteImageFile(track.imageUri);
 }

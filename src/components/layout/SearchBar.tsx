@@ -1,5 +1,7 @@
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+
+import { SearchInput } from './SearchInput';
 
 type Props = {
   scrollY: SharedValue<number>;
@@ -24,28 +26,11 @@ export function SearchBar({ scrollY, value, onChangeText, placeholder }: Props):
 
   return (
     <Animated.View style={animatedStyle}>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#555"
-        style={styles.input}
-      />
+      <SearchInput value={value} onChangeText={onChangeText} placeholder={placeholder} style={styles.input} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  input: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: '#111',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    borderRadius: 18,
-    color: '#fff',
-    fontSize: 15,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
+  input: { marginHorizontal: 16, marginBottom: 12 },
 });

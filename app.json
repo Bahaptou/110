@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.baptistedurand.app110"
     },
     "android": {
+      "package": "com.baptistedurand.app110",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,7 +30,8 @@
         {
           "microphonePermission": "Autorise l'accès au micro pour enregistrer des sons."
         }
-      ]
+      ],
+      "expo-sharing"
     ]
   }
 }

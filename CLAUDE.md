@@ -21,6 +21,8 @@ dossier/module concerné. Cette règle s'applique en cascade :
 | Vue d'ensemble / architecture globale | `.claude/docs/overview.md`          |
 | `App.tsx`, `index.ts` (app principale)| `.claude/docs/app/overview.md`      |
 | `assets/`                             | `.claude/docs/app/assets.md`        |
+| `src/db/`, `src/data/`, toute couche repository/service/hook | `.claude/docs/data-layer.md` |
+| `src/features/tracks/`, `src/features/playback/` (import, stockage, lecture audio) | `.claude/docs/tracks-audio.md` |
 | Design/UI, écrans, palette, style visuel | `.claude/docs/design-reference.md` (référence Figma figée, lecture seule) **et** `.claude/docs/design-implementation.md` (état réel du code, gouverné normalement) |
 
 `Figma Front Inspiration/` (racine du projet) contient l'export Figma Make
@@ -35,11 +37,10 @@ celles couvertes par la Règle n°2 : tu la signales, et toute correction de ce
 CLAUDE.md suit la même procédure de diff + validation que la Règle n°3 — y
 compris pour ce fichier lui-même.
 
-Le projet est encore très petit (juste `App.tsx` / `index.ts` / `assets/`) :
-la table ci-dessus grossira au fur et à mesure que des modules/dossiers
-distincts apparaissent (navigation, state, composants, etc.) — chacun avec
-son propre `.md`, proposé et validé au moment où il est créé (voir Règle
-n°3), pas à l'avance.
+La table ci-dessus grossit au fur et à mesure que des modules/dossiers
+distincts apparaissent (`albums/`, `playlists/`, enregistrement micro...) —
+chacun avec son propre `.md`, proposé et validé au moment où il est créé
+(voir Règle n°3), pas à l'avance.
 
 ## Règle n°2 — Vigilance continue sur la fidélité doc ↔ code
 

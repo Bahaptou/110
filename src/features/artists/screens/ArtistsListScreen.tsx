@@ -10,6 +10,10 @@ import { SearchBar } from '../../../components/layout/SearchBar';
 import { StretchHeader } from '../../../components/layout/StretchHeader';
 import { useEditMode } from '../../../components/layout/useEditMode';
 import { useScrollHeader } from '../../../components/layout/useScrollHeader';
+import { Cover } from '../../images/Cover';
+import { usePlayback } from '../../playback/PlaybackProvider';
+import { CrossSearchResults, type CrossSearchResult } from '../../search/CrossSearchResults';
+import { useCrossSearch } from '../../search/useCrossSearch';
 import { getTrackCountByArtist } from '../../tracks/service';
 import { type ArtistsStackParamList } from '../ArtistsStack';
 import { type Artist } from '../types';
@@ -22,15 +26,36 @@ const AnimatedFlatList = Animated.FlatList;
 export function ArtistsListScreen({ navigation }: Props): React.JSX.Element {
   const db = useSQLiteContext();
   const { artists, loading, error, deleteArtist } = useArtists();
+  const { play } = usePlayback();
   const { scrollY, onScroll } = useScrollHeader();
   const { isEditing, enter, exit } = useEditMode();
   const [search, setSearch] = useState('');
 
+  const query = search.trim().toLowerCase();
+
   const filteredArtists = useMemo(() => {
-    const query = search.trim().toLowerCase();
     if (query.length === 0) return artists;
     return artists.filter((artist) => artist.name.toLowerCase().includes(query));
-  }, [artists, search]);
+  }, [artists, query]);
+
+  // Cross-context results: the grid of artists keeps priority, and everything else matching the same
+  // query is offered underneath.
+  const { results: crossResults, tracks: crossTracks } = useCrossSearch(query, 'artist');
+
+  const openResult = useCallback(
+    (result: CrossSearchResult) => {
+      if (result.kind === 'album') {
+        navigation.navigate('AlbumDetail', { albumId: result.id });
+        return;
+      }
+      if (result.kind === 'track') {
+        // Tapping a sound plays it straight away, looping over the rest of the search results.
+        const track = crossTracks.find((t) => t.id === result.id);
+        if (track) play(track, crossTracks);
+      }
+    },
+    [navigation, play, crossTracks]
+  );
 
   const confirmDelete = useCallback(
     async (artist: Artist) => {
@@ -46,7 +71,7 @@ export function ArtistsListScreen({ navigation }: Props): React.JSX.Element {
             text: 'Supprimer',
             style: 'destructive',
             onPress: async () => {
-              await deleteArtist(artist.id);
+              await deleteArtist(artist);
               exit();
             },
           },
@@ -79,16 +104,21 @@ export function ArtistsListScreen({ navigation }: Props): React.JSX.Element {
                 </View>
               </StretchHeader>
               <View pointerEvents={isEditing ? 'none' : 'auto'}>
-                <SearchBar scrollY={scrollY} value={search} onChangeText={setSearch} placeholder="Rechercher un artiste" />
+                <SearchBar scrollY={scrollY} value={search} onChangeText={setSearch} placeholder="Rechercher n'importe quoi" />
               </View>
               {loading && <Text style={styles.info}>Chargement...</Text>}
               {error && <Text style={styles.info}>{error.message}</Text>}
-              {!loading && !error && filteredArtists.length === 0 && (
+              {!loading && !error && filteredArtists.length === 0 && crossResults.length === 0 && (
                 <Text style={styles.info}>
-                  {search.trim().length > 0 ? 'Aucun résultat.' : "Aucun artiste pour l'instant."}
+                  {query.length > 0 ? 'Aucun résultat.' : "Aucun artiste pour l'instant."}
                 </Text>
               )}
             </>
+          }
+          ListFooterComponent={
+            <View pointerEvents={isEditing ? 'none' : 'auto'}>
+              <CrossSearchResults results={crossResults} onSelect={openResult} />
+            </View>
           }
           renderItem={({ item }: { item: Artist }) => (
             <JiggleTile isEditing={isEditing} onDelete={() => confirmDelete(item)} style={styles.tileWrapper}>
@@ -97,9 +127,14 @@ export function ArtistsListScreen({ navigation }: Props): React.JSX.Element {
                 onPress={() => (isEditing ? exit() : navigation.navigate('ArtistDetail', { artistId: item.id }))}
                 onLongPress={enter}
               >
-                <View style={[styles.avatar, { backgroundColor: item.color }]}>
-                  <Text style={styles.initials}>{item.name.slice(0, 2).toUpperCase()}</Text>
-                </View>
+                <Cover
+                  imageUri={item.imageUri}
+                  color={item.color}
+                  fallbackText={item.name.slice(0, 2).toUpperCase()}
+                  size={80}
+                  borderRadius={18}
+                  fontSize={24}
+                />
                 <Text style={styles.name}>{item.name}</Text>
               </Pressable>
             </JiggleTile>

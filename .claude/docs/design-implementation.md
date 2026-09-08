@@ -12,9 +12,10 @@ composants UI concernés, diff + validation avant toute modification.
 
 ## État actuel
 
-Tab bar à 4 onglets en place (Artistes fonctionnel, Morceaux/Albums/Playlists
-en `PlaceholderScreen`). Slice vertical complet pour Artistes + une version
-minimale de Tracks (titre + favori, pas d'audio réel).
+Tab bar à 5 slots (Artistes, Morceaux, bouton micro central, Albums,
+Playlists). Artistes et Morceaux sont complets, avec un vrai lecteur audio
+global. Albums/Playlists sont des `PlaceholderScreen`, le bouton micro est
+visuel uniquement.
 
 ## Palette — implémentée en styles inline (`StyleSheet.create` par écran)
 
@@ -32,17 +33,24 @@ tranchée avec Baptiste.
 
 | Écran (référence) | Composant RN réel | État |
 |---|---|---|
-| Artistes | `features/artists/screens/ArtistsListScreen.tsx` | fait |
-| Ajouter un ami | `features/artists/screens/AddArtistScreen.tsx` | fait |
-| ArtistDetail | `features/artists/screens/ArtistDetailScreen.tsx` | fait (liste de morceaux + favori + ajout de son par titre) |
-| Morceaux (onglet) | `PlaceholderScreen` | pas commencé |
+| Artistes | `features/artists/screens/ArtistsListScreen.tsx` | fait (grille 2 colonnes, recherche, mode édition jiggle + suppression) |
+| Ajouter un ami | `features/artists/screens/AddArtistScreen.tsx` + `AddArtistForm.tsx` | fait |
+| ArtistDetail | `features/artists/screens/ArtistDetailScreen.tsx` | fait (pochette stretch au pull, recherche, liste de morceaux + favori) |
+| Morceaux (onglet) | `features/tracks/screens/TracksListScreen.tsx` | fait (liste détaillée, recherche, import, menu ⋯) |
+| ImportTrackModal | `features/tracks/screens/SaveTrackScreen.tsx` | fait (titre + choix d'artiste, validation format/durée) |
+| MiniPlayer | `features/playback/MiniPlayer.tsx` | fait (visible sur tous les onglets, au-dessus de la tab bar) |
+| TrackPlayer | `features/playback/PlayerScreen.tsx` | fait (pochette, scrubber, précédent/suivant, swipe-down pour réduire) |
 | Albums / AlbumDetail | `PlaceholderScreen` | pas commencé |
 | Playlists / PlaylistDetail | `PlaceholderScreen` | pas commencé |
-| TrackPlayer | — | pas commencé |
-| MiniPlayer | — | pas commencé |
-| ImportTrackModal | — | pas commencé |
-| RecordModal | — | pas commencé |
+| RecordModal | — | pas commencé (bouton micro central visuel uniquement) |
 | CreatePlaylistModal / CreateAlbumModal | — | pas commencé |
+
+Écrans hors référence Figma, ajoutés en cours de route :
+
+| Écran | Composant | Rôle |
+|---|---|---|
+| Menu d'actions d'un morceau | `features/tracks/TrackActionsSheet.tsx` | bottom sheet ⋯ : changer d'artiste, supprimer (Album/Playlist grisés) |
+| Changer d'artiste | `features/tracks/screens/ChangeTrackArtistScreen.tsx` | écran plein (une version en sheet flottante s'est avérée instable) |
 
 ## Écarts connus avec la référence
 
@@ -51,10 +59,16 @@ tranchée avec Baptiste.
   l'implémentation utilise un rayon prononcé (~16-20px) à la place — écart
   assumé, pas un oubli. Si de nouveaux écrans sont ajoutés, aligner sur ce
   rayon prononcé plutôt que sur la référence Figma d'origine.
-- **Ajout de morceau** : dans la référence, l'ajout se fait par
-  enregistrement micro ou import de fichier (RecordModal/ImportTrackModal).
-  L'implémentation actuelle n'a qu'un champ texte (titre) sans audio réel —
-  RecordModal/ImportTrackModal restent à construire.
+- **Morceaux en liste, pas en grille** : la référence montre une grille 3
+  colonnes de pochettes ; l'implémentation utilise une liste détaillée
+  (demande de Baptiste, 2026-09-08).
+- **Bouton micro dans la tab bar** : la référence n'a pas de bouton central ;
+  l'implémentation ajoute un bouton rond rouge proéminent en 5e slot
+  (pattern Instagram/TikTok) comme point d'entrée de l'enregistrement.
+- **Interactions ajoutées** : pull-to-stretch sur les en-têtes, mode édition
+  « jiggle » iOS pour la suppression, swipe-down sur le lecteur plein écran —
+  absents de la référence, ajoutés à la demande.
 - Le prototype Figma Make n'a ni vrai lecteur audio ni vraie gestion
-  d'enregistrement/permissions micro — ces briques restent à concevoir
-  entièrement côté RN/Expo, la référence ne donne que l'UI/UX cible.
+  d'enregistrement/permissions micro — la référence ne donne que l'UI/UX
+  cible. Pour l'implémentation réelle, voir
+  [tracks-audio.md](tracks-audio.md).

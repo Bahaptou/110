@@ -18,6 +18,9 @@ type PlaybackContextValue = {
   seekTo: (seconds: number) => void;
   /** Stops playback and clears state if `trackId` is the one currently loaded — call before deleting a track. */
   stopIfPlaying: (trackId: string) => void;
+  /** Off by default: sounds are short one-offs meant to be replayed, not an album to listen through. */
+  autoAdvance: boolean;
+  toggleAutoAdvance: () => void;
 };
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -27,6 +30,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }): React.J
   const status = useAudioPlayerStatus(player);
   const [queue, setQueue] = useState<Track[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [autoAdvance, setAutoAdvance] = useState(false);
 
   useEffect(() => {
     // Without this, iOS silences playback whenever the physical mute switch is on — recorded voice
@@ -44,6 +48,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }): React.J
     [player]
   );
 
+  /** Manual skip: stops at the end of the queue. Automatic advancing wraps around — see onFinishRef. */
   const playNext = useCallback(() => {
     if (!currentTrack) return;
     const index = queue.findIndex((t) => t.id === currentTrack.id);
@@ -58,12 +63,34 @@ export function PlaybackProvider({ children }: { children: ReactNode }): React.J
     if (previous) playTrack(previous, queue);
   }, [currentTrack, queue, playTrack]);
 
-  const playNextRef = useRef(playNext);
-  playNextRef.current = playNext;
+  /**
+   * A finished sound loops rather than stopping — these are short clips people replay over and over,
+   * so looping is the fun default. With autoAdvance on, playback moves through the queue and wraps
+   * around to the first track after the last one. Either way it never just stops on its own: pausing
+   * is a deliberate tap.
+   *
+   * Wrapping lives here rather than in playNext() because the manual ⏭ button stays disabled at the
+   * end of the queue — only automatic advancing loops back round.
+   *
+   * (expo-audio leaves the player parked at the end rather than rewinding, hence the explicit seek.)
+   */
+  const onFinishRef = useRef<() => void>(() => {});
+  onFinishRef.current = () => {
+    if (autoAdvance && currentTrack) {
+      const index = queue.findIndex((t) => t.id === currentTrack.id);
+      const next = index === -1 ? undefined : (queue[index + 1] ?? queue[0]);
+      if (next && next.id !== currentTrack.id) {
+        playTrack(next, queue);
+        return;
+      }
+    }
+    player.seekTo(0);
+    player.play();
+  };
 
   useEffect(() => {
     if (status.didJustFinish) {
-      playNextRef.current();
+      onFinishRef.current();
     }
   }, [status.didJustFinish]);
 
@@ -89,6 +116,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }): React.J
     [player]
   );
 
+  const toggleAutoAdvance = useCallback(() => setAutoAdvance((current) => !current), []);
+
   const value = useMemo<PlaybackContextValue>(
     () => ({
       queue,
@@ -102,6 +131,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }): React.J
       playPrevious,
       seekTo,
       stopIfPlaying,
+      autoAdvance,
+      toggleAutoAdvance,
     }),
     [
       queue,
@@ -115,6 +146,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }): React.J
       playPrevious,
       seekTo,
       stopIfPlaying,
+      autoAdvance,
+      toggleAutoAdvance,
     ]
   );
 

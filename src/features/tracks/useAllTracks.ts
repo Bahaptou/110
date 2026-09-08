@@ -4,7 +4,17 @@ import { useCallback } from 'react';
 import { type QueryError } from '../../data/queryError';
 import { useSqliteQuery } from '../../data/useSqliteQuery';
 import { listAllTracks } from './repository';
-import { changeTrackArtist, removeTrack, toggleTrackFavorite } from './service';
+import { type Album } from '../albums/types';
+import {
+  changeTrackAlbum,
+  changeTrackArtist,
+  changeTrackImage,
+  removeTrack,
+  renameTrack,
+  toggleTrackFavorite,
+  type ChangeTrackAlbumResult,
+  type RenameTrackResult,
+} from './service';
 import { type Track } from './types';
 
 type UseAllTracksResult = {
@@ -15,6 +25,9 @@ type UseAllTracksResult = {
   toggleFavorite: (track: Track) => Promise<void>;
   changeArtist: (track: Track, artistId: string) => Promise<void>;
   deleteTrack: (track: Track) => Promise<void>;
+  setImage: (track: Track, imageUri: string) => Promise<void>;
+  rename: (track: Track, title: string) => Promise<RenameTrackResult>;
+  changeAlbum: (track: Track, album: Album | null) => Promise<ChangeTrackAlbumResult>;
 };
 
 /** All tracks across every artist — backs the "Morceaux" tab, as opposed to useArtistTracks which scopes to one artist. */
@@ -37,7 +50,10 @@ export function useAllTracks(): UseAllTracksResult {
 
   const changeArtist = useCallback(
     async (track: Track, artistId: string) => {
-      setData((current) => current?.map((t) => (t.id === track.id ? { ...t, artistId } : t)) ?? current);
+      // The album goes with it: albums belong to one artist, so the old one can't apply any more.
+      setData(
+        (current) => current?.map((t) => (t.id === track.id ? { ...t, artistId, albumId: null } : t)) ?? current
+      );
       await changeTrackArtist(db, track.id, artistId);
     },
     [db, setData]
@@ -51,5 +67,48 @@ export function useAllTracks(): UseAllTracksResult {
     [db, setData]
   );
 
-  return { tracks: data ?? [], loading, error, refresh, toggleFavorite, changeArtist, deleteTrack: deleteTrackAction };
+  const setImage = useCallback(
+    async (track: Track, imageUri: string) => {
+      setData((current) => current?.map((t) => (t.id === track.id ? { ...t, imageUri } : t)) ?? current);
+      await changeTrackImage(db, track, imageUri);
+    },
+    [db, setData]
+  );
+
+  const rename = useCallback(
+    async (track: Track, title: string) => {
+      const result = await renameTrack(db, track.id, title);
+      if (result.ok) {
+        setData((current) => current?.map((t) => (t.id === track.id ? { ...t, title: title.trim() } : t)) ?? current);
+      }
+      return result;
+    },
+    [db, setData]
+  );
+
+  const changeAlbum = useCallback(
+    async (track: Track, album: Album | null) => {
+      const result = await changeTrackAlbum(db, track, album);
+      if (result.ok) {
+        setData(
+          (current) => current?.map((t) => (t.id === track.id ? { ...t, albumId: album?.id ?? null } : t)) ?? current
+        );
+      }
+      return result;
+    },
+    [db, setData]
+  );
+
+  return {
+    tracks: data ?? [],
+    loading,
+    error,
+    refresh,
+    toggleFavorite,
+    changeArtist,
+    deleteTrack: deleteTrackAction,
+    setImage,
+    rename,
+    changeAlbum,
+  };
 }

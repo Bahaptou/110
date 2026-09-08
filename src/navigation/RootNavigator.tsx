@@ -1,18 +1,24 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, type NavigationProp } from '@react-navigation/native';
 import { BottomTabBar, createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { PlaceholderScreen } from '../components/layout/PlaceholderScreen';
+import { AlbumsStack } from '../features/albums/AlbumsStack';
 import { ArtistsStack } from '../features/artists/ArtistsStack';
+import { PlaylistsStack } from '../features/playlists/PlaylistsStack';
 import { MiniPlayer } from '../features/playback/MiniPlayer';
 import { PlayerScreen } from '../features/playback/PlayerScreen';
-import { TracksStack } from '../features/tracks/TracksStack';
+import { TracksStack, type TracksStackParamList } from '../features/tracks/TracksStack';
 import { AlbumsTabIcon, ArtistsTabIcon, PlaylistsTabIcon, RecordTabIcon, TracksTabIcon } from './TabIcons';
 
 export type RootTabParamList = {
   Artists: undefined;
-  Tracks: undefined;
+  /**
+   * Nested: the centre record button targets a screen inside the tracks stack. `initial: false`
+   * keeps the stack's own first screen mounted underneath rather than replacing it.
+   */
+  Tracks: { screen: keyof TracksStackParamList; initial?: boolean } | undefined;
   Record: undefined;
   Albums: undefined;
   Playlists: undefined;
@@ -38,24 +44,32 @@ const darkTheme = {
   },
 };
 
-function AlbumsScreen(): React.JSX.Element {
-  return <PlaceholderScreen label="ALBUMS" />;
-}
-
-function PlaylistsScreen(): React.JSX.Element {
-  return <PlaceholderScreen label="PLAYLISTS" />;
-}
-
 /** Never actually navigated to — tabBarButton below intercepts the press instead. Required by Tab.Screen regardless. */
 function RecordScreen(): React.JSX.Element | null {
   return null;
 }
 
-/** Raised circular record button, like Instagram/TikTok's center camera tab. Visual only for now — no action wired yet. */
+/**
+ * Raised circular record button, like Instagram/TikTok's center camera tab. Opens the recorder
+ * inside the Tracks stack rather than switching to a Record tab, so a finished recording lands on
+ * the same save screen an import does.
+ */
 function RecordTabButton(): React.JSX.Element {
+  const navigation = useNavigation<NavigationProp<RootTabParamList>>();
+
   return (
     <View style={styles.recordButtonWrapper}>
-      <Pressable style={styles.recordButton}>
+      <Pressable
+        style={styles.recordButton}
+        // Targeting the stack's initial route explicitly keeps TracksList underneath, so the save
+        // screen that follows the recording has somewhere to pop back to.
+        onPress={() =>
+          navigation.navigate('Tracks', {
+            screen: 'RecordTrack',
+            initial: false,
+          })
+        }
+      >
         <RecordTabIcon />
       </Pressable>
     </View>
@@ -118,12 +132,12 @@ export function RootNavigator(): React.JSX.Element {
         />
         <Tab.Screen
           name="Albums"
-          component={AlbumsScreen}
+          component={AlbumsStack}
           options={{ tabBarLabel: 'ALBUMS', tabBarIcon: ({ focused }) => <AlbumsTabIcon active={focused} /> }}
         />
         <Tab.Screen
           name="Playlists"
-          component={PlaylistsScreen}
+          component={PlaylistsStack}
           options={{ tabBarLabel: 'PLAYLISTS', tabBarIcon: ({ focused }) => <PlaylistsTabIcon active={focused} /> }}
         />
       </Tab.Navigator>
